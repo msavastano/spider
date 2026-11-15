@@ -76,30 +76,34 @@ export function drawSuitGlyph(
     ctx.quadraticCurveTo(-s * 0.36, -s * 0.34, 0, -s * 1.02);
     ctx.closePath();
   } else if (suit === 'spades') {
-    // Upper inverted heart body
-    ctx.moveTo(0, -s * 0.98);
-    ctx.bezierCurveTo(s * 0.98, -s * 0.18, s * 1.08, s * 0.62, s * 0.42, s * 0.62);
-    ctx.bezierCurveTo(s * 0.18, s * 0.62, s * 0.08, s * 0.42, s * 0.06, s * 0.32);
-    ctx.quadraticCurveTo(s * 0.12, s * 0.78, s * 0.34, s * 0.96);
+    // Crisp pointed spearhead top tapering cleanly to broad lower wings + flared stem
+    ctx.moveTo(0, -s * 1.04);
+    ctx.bezierCurveTo(s * 0.24, -s * 0.62, s * 1.02, -s * 0.06, s * 0.92, s * 0.34);
+    ctx.bezierCurveTo(s * 0.85, s * 0.64, s * 0.42, s * 0.68, s * 0.14, s * 0.34);
+    ctx.quadraticCurveTo(s * 0.12, s * 0.74, s * 0.34, s * 0.96);
     ctx.lineTo(-s * 0.34, s * 0.96);
-    ctx.quadraticCurveTo(-s * 0.12, s * 0.78, -s * 0.06, s * 0.32);
-    ctx.bezierCurveTo(-s * 0.08, s * 0.42, -s * 0.18, s * 0.62, -s * 0.42, s * 0.62);
-    ctx.bezierCurveTo(-s * 1.08, s * 0.62, -s * 0.98, -s * 0.18, 0, -s * 0.98);
+    ctx.quadraticCurveTo(-s * 0.12, s * 0.74, -s * 0.14, s * 0.34);
+    ctx.bezierCurveTo(-s * 0.42, s * 0.68, -s * 0.85, s * 0.64, -s * 0.92, s * 0.34);
+    ctx.bezierCurveTo(-s * 1.02, -s * 0.06, -s * 0.24, -s * 0.62, 0, -s * 1.04);
     ctx.closePath();
   } else {
-    // Clubs: three balanced round lobes + flared stem
-    const r = s * 0.42;
-    const topY = -s * 0.44;
-    const sideX = s * 0.46;
-    const sideY = s * 0.14;
-    ctx.arc(0, topY, r, Math.PI * 0.82, Math.PI * 0.18, false);
-    ctx.arc(sideX, sideY, r, -Math.PI * 0.68, Math.PI * 0.65, false);
-    ctx.quadraticCurveTo(s * 0.12, s * 0.36, s * 0.09, s * 0.48);
-    ctx.quadraticCurveTo(s * 0.14, s * 0.8, s * 0.34, s * 0.96);
-    ctx.lineTo(-s * 0.34, s * 0.96);
-    ctx.quadraticCurveTo(-s * 0.14, s * 0.8, -s * 0.09, s * 0.48);
-    ctx.quadraticCurveTo(-s * 0.12, s * 0.36, -s * 0.16, s * 0.34);
-    ctx.arc(-sideX, sideY, r, Math.PI * 0.35, -Math.PI * 0.32, false);
+    // Clubs: three distinctly separated round trefoil lobes with deep waist clefts + slim stem
+    const r = s * 0.345;
+    const topY = -s * 0.54;
+    const sideX = s * 0.47;
+    const sideY = s * 0.08;
+    ctx.moveTo(-s * 0.11, -s * 0.14);
+    ctx.lineTo(-s * 0.18, -s * 0.25);
+    ctx.arc(0, topY, r, Math.PI * 0.72, Math.PI * 0.28, false);
+    ctx.lineTo(s * 0.11, -s * 0.14);
+    ctx.lineTo(s * 0.19, -s * 0.10);
+    ctx.arc(sideX, sideY, r, -Math.PI * 0.82, Math.PI * 0.70, false);
+    ctx.quadraticCurveTo(s * 0.09, s * 0.24, s * 0.08, s * 0.48);
+    ctx.quadraticCurveTo(s * 0.12, s * 0.78, s * 0.32, s * 0.96);
+    ctx.lineTo(-s * 0.32, s * 0.96);
+    ctx.quadraticCurveTo(-s * 0.12, s * 0.78, -s * 0.08, s * 0.48);
+    ctx.quadraticCurveTo(-s * 0.09, s * 0.24, -s * 0.27, s * 0.36);
+    ctx.arc(-sideX, sideY, r, Math.PI * 0.30, -Math.PI * 0.18, false);
     ctx.closePath();
   }
 
@@ -178,18 +182,18 @@ function drawHeaderBand(
   ctx.restore();
 
   const bandCenterY = Math.round(headerH * 0.54);
-  const fontSize = palette.jumboLayout ? 92 : 82;
-  const suitSize = palette.jumboLayout ? 68 : 60;
+  const fontSize = palette.jumboLayout ? 94 : 84;
+  const suitSize = palette.jumboLayout ? 82 : 70;
 
   // Top-Left: [Rank] + [Suit]
-  const leftRankX = label === '10' ? 76 : 68;
-  const leftSuitX = label === '10' ? 168 : 152;
+  const leftRankX = label === '10' ? (palette.jumboLayout ? 76 : 74) : 64;
+  const leftSuitX = label === '10' ? (palette.jumboLayout ? 176 : 170) : palette.jumboLayout ? 164 : 156;
   drawRankText(ctx, label, leftRankX, bandCenterY, fontSize, palette, suitColor);
   drawSuitGlyph(ctx, suit, leftSuitX, bandCenterY, suitSize, suitColor);
 
   // Top-Right: [Suit] + [Rank]
-  const rightRankX = label === '10' ? W - 76 : W - 68;
-  const rightSuitX = label === '10' ? W - 168 : W - 152;
+  const rightRankX = W - leftRankX;
+  const rightSuitX = W - leftSuitX;
   drawSuitGlyph(ctx, suit, rightSuitX, bandCenterY, suitSize, suitColor);
   drawRankText(ctx, label, rightRankX, bandCenterY, fontSize, palette, suitColor);
 }
@@ -377,6 +381,98 @@ function drawNumberPips(
   }
 }
 
+function drawCourtEmblem(
+  ctx: CanvasRenderingContext2D,
+  rank: Rank,
+  suitColor: string,
+  palette: CardFacePalette,
+  topYOffset: number,
+  drawLowerFlourish: boolean,
+): void {
+  ctx.save();
+  ctx.translate(0, topYOffset);
+  ctx.fillStyle = palette.courtAccent;
+  ctx.strokeStyle = palette.courtFrame;
+  ctx.lineWidth = 2.2;
+
+  if (rank === 13) {
+    // King: 5-point royal crown
+    ctx.beginPath();
+    ctx.moveTo(-54, 18);
+    ctx.lineTo(-64, -28);
+    ctx.lineTo(-30, -4);
+    ctx.lineTo(0, -42);
+    ctx.lineTo(30, -4);
+    ctx.lineTo(64, -28);
+    ctx.lineTo(54, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = suitColor;
+    for (const jx of [-64, 0, 64]) {
+      const jy = jx === 0 ? -42 : -28;
+      ctx.beginPath();
+      ctx.arc(jx, jy, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (rank === 12) {
+    // Queen: graceful floral coronet diadem
+    ctx.beginPath();
+    ctx.moveTo(-48, 16);
+    ctx.quadraticCurveTo(-56, -22, -28, -12);
+    ctx.quadraticCurveTo(0, -46, 0, -46);
+    ctx.quadraticCurveTo(0, -46, 28, -12);
+    ctx.quadraticCurveTo(56, -22, 48, 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    // Jack: heraldic spear finial
+    ctx.beginPath();
+    ctx.moveTo(0, -44);
+    ctx.lineTo(26, -10);
+    ctx.lineTo(0, 14);
+    ctx.lineTo(-26, -10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  if (!drawLowerFlourish) return;
+
+  ctx.save();
+  if (rank === 13) {
+    ctx.strokeStyle = palette.courtSecondary;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-48, 92);
+    ctx.lineTo(48, 118);
+    ctx.moveTo(48, 92);
+    ctx.lineTo(-48, 118);
+    ctx.stroke();
+  } else if (rank === 12) {
+    ctx.strokeStyle = suitColor;
+    ctx.lineWidth = 2.4;
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * 13, 102 + Math.sin(a) * 13, 6.5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  } else {
+    ctx.strokeStyle = palette.courtSecondary;
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(-38, 92);
+    ctx.lineTo(0, 114);
+    ctx.lineTo(38, 92);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawCourtCrest(
   ctx: CanvasRenderingContext2D,
   rank: Rank,
@@ -399,26 +495,28 @@ function drawCourtCrest(
   ctx.fillStyle = palette.courtBg;
   ctx.fill();
 
-  // Subtle diagonal diamond lattice inside court frame
-  ctx.save();
-  ctx.clip();
-  ctx.strokeStyle = palette.isDark
-    ? 'rgba(212, 175, 96, 0.14)'
-    : 'rgba(148, 128, 92, 0.12)';
-  ctx.lineWidth = 1.5;
-  const step = 28;
-  for (let d = -boxH; d < boxW + boxH; d += step) {
-    ctx.beginPath();
-    ctx.moveTo(boxX + d, boxY);
-    ctx.lineTo(boxX + d - boxH * 0.65, boxY + boxH);
-    ctx.stroke();
+  if (!palette.jumboLayout) {
+    // Subtle diagonal diamond lattice inside classic/modern/midnight court frame
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = palette.isDark
+      ? 'rgba(212, 175, 96, 0.14)'
+      : 'rgba(148, 128, 92, 0.12)';
+    ctx.lineWidth = 1.5;
+    const step = 28;
+    for (let d = -boxH; d < boxW + boxH; d += step) {
+      ctx.beginPath();
+      ctx.moveTo(boxX + d, boxY);
+      ctx.lineTo(boxX + d - boxH * 0.65, boxY + boxH);
+      ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(boxX + d, boxY);
-    ctx.lineTo(boxX + d + boxH * 0.65, boxY + boxH);
-    ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(boxX + d, boxY);
+      ctx.lineTo(boxX + d + boxH * 0.65, boxY + boxH);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   // Double court border
   roundedRectPath(ctx, boxX, boxY, boxW, boxH, 18);
@@ -431,123 +529,67 @@ function drawCourtCrest(
   ctx.lineWidth = 1.6;
   ctx.stroke();
 
-  // Geometric crest diamond medallion
-  const medR = 112;
   ctx.save();
   ctx.translate(cx, cy);
 
-  // Outer shield/octagram glow
-  ctx.beginPath();
-  ctx.moveTo(0, -medR * 1.15);
-  ctx.lineTo(medR * 0.92, 0);
-  ctx.lineTo(0, medR * 1.15);
-  ctx.lineTo(-medR * 0.92, 0);
-  ctx.closePath();
-  ctx.fillStyle = palette.isDark ? 'rgba(18, 24, 40, 0.92)' : 'rgba(255, 253, 248, 0.94)';
-  ctx.fill();
-  ctx.strokeStyle = palette.courtFrame;
-  ctx.lineWidth = 3.5;
-  ctx.stroke();
+  if (palette.jumboLayout) {
+    // Jumbo mode court layout: crisp top royal emblem + giant unobstructed center suit pip
+    drawCourtEmblem(ctx, rank, suitColor, palette, -142, false);
+    drawSuitGlyph(ctx, suit, 0, 26, 188, suitColor);
 
-  // Inner circle crest
-  ctx.beginPath();
-  ctx.arc(0, 0, medR * 0.66, 0, Math.PI * 2);
-  ctx.fillStyle = palette.isDark ? '#1D253B' : '#FFFFFF';
-  ctx.fill();
-  ctx.strokeStyle = palette.courtAccent;
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
+    // Bold inner court corner pips & ranks
+    drawSuitGlyph(ctx, suit, -boxW * 0.34, -boxH * 0.36, 56, suitColor);
+    drawSuitGlyph(ctx, suit, boxW * 0.34, boxH * 0.36, 56, suitColor, Math.PI);
 
-  // Distinct rank crown / emblem at top of medallion
-  ctx.fillStyle = palette.courtAccent;
-  ctx.strokeStyle = palette.courtFrame;
-  ctx.lineWidth = 2;
-
-  if (rank === 13) {
-    // King: 5-point royal crown above central suit
-    ctx.beginPath();
-    ctx.moveTo(-54, -46);
-    ctx.lineTo(-64, -92);
-    ctx.lineTo(-30, -68);
-    ctx.lineTo(0, -106);
-    ctx.lineTo(30, -68);
-    ctx.lineTo(64, -92);
-    ctx.lineTo(54, -46);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // Jewel dots
-    ctx.fillStyle = suitColor;
-    for (const jx of [-64, 0, 64]) {
-      const jy = jx === 0 ? -106 : -92;
-      ctx.beginPath();
-      ctx.arc(jx, jy, 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Crossed royal scepter accents below
-    ctx.strokeStyle = palette.courtSecondary;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(-52, 72);
-    ctx.lineTo(52, 102);
-    ctx.moveTo(52, 72);
-    ctx.lineTo(-52, 102);
-    ctx.stroke();
-  } else if (rank === 12) {
-    // Queen: graceful floral coronet diadem
-    ctx.beginPath();
-    ctx.moveTo(-48, -48);
-    ctx.quadraticCurveTo(-56, -86, -28, -76);
-    ctx.quadraticCurveTo(0, -110, 0, -110);
-    ctx.quadraticCurveTo(0, -110, 28, -76);
-    ctx.quadraticCurveTo(56, -86, 48, -48);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // Floral rosette below
-    ctx.strokeStyle = suitColor;
-    ctx.lineWidth = 2.5;
-    for (let i = 0; i < 6; i++) {
-      const a = (i * Math.PI) / 3;
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * 14, 86 + Math.sin(a) * 14, 7, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    drawRankText(ctx, RANK_LABELS[rank], boxW * 0.34, -boxH * 0.36, 46, palette, suitColor);
+    ctx.save();
+    ctx.translate(-boxW * 0.34, boxH * 0.36);
+    ctx.rotate(Math.PI);
+    drawRankText(ctx, RANK_LABELS[rank], 0, 0, 46, palette, suitColor);
+    ctx.restore();
   } else {
-    // Jack: heraldic shield chevron & spear finial
+    // Geometric crest diamond medallion
+    const medR = 122;
+
+    // Outer shield/octagram glow
     ctx.beginPath();
-    ctx.moveTo(0, -108);
-    ctx.lineTo(24, -74);
-    ctx.lineTo(0, -52);
-    ctx.lineTo(-24, -74);
+    ctx.moveTo(0, -medR * 1.18);
+    ctx.lineTo(medR * 0.94, 0);
+    ctx.lineTo(0, medR * 1.18);
+    ctx.lineTo(-medR * 0.94, 0);
     ctx.closePath();
+    ctx.fillStyle = palette.isDark ? 'rgba(18, 24, 40, 0.92)' : 'rgba(255, 253, 248, 0.95)';
     ctx.fill();
+    ctx.strokeStyle = palette.courtFrame;
+    ctx.lineWidth = 3.5;
     ctx.stroke();
 
-    // Shield chevron below
-    ctx.strokeStyle = palette.courtSecondary;
-    ctx.lineWidth = 4.5;
+    // Wide inner circle crest so center suit has clear contrast margin
     ctx.beginPath();
-    ctx.moveTo(-42, 74);
-    ctx.lineTo(0, 98);
-    ctx.lineTo(42, 74);
+    ctx.arc(0, 6, medR * 0.72, 0, Math.PI * 2);
+    ctx.fillStyle = palette.isDark ? '#1D253B' : '#FFFFFF';
+    ctx.fill();
+    ctx.strokeStyle = palette.courtAccent;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
+
+    drawCourtEmblem(ctx, rank, suitColor, palette, -88, true);
+
+    // Large central suit emblem inside crest
+    drawSuitGlyph(ctx, suit, 0, 10, 112, suitColor);
+
+    // Corner suit pips inside the court plaque
+    drawSuitGlyph(ctx, suit, -boxW * 0.34, -boxH * 0.36, 54, suitColor);
+    drawSuitGlyph(ctx, suit, boxW * 0.34, boxH * 0.36, 54, suitColor, Math.PI);
+
+    // Subtle rank letter badges inside top-right & bottom-left of court plaque
+    drawRankText(ctx, RANK_LABELS[rank], boxW * 0.34, -boxH * 0.36, 44, palette, suitColor);
+    ctx.save();
+    ctx.translate(-boxW * 0.34, boxH * 0.36);
+    ctx.rotate(Math.PI);
+    drawRankText(ctx, RANK_LABELS[rank], 0, 0, 44, palette, suitColor);
+    ctx.restore();
   }
-
-  // Central suit emblem inside crest
-  drawSuitGlyph(ctx, suit, 0, 10, 82, suitColor);
-
-  // Corner suit pips inside the court plaque
-  drawSuitGlyph(ctx, suit, -boxW * 0.34, -boxH * 0.36, 42, suitColor);
-  drawSuitGlyph(ctx, suit, boxW * 0.34, boxH * 0.36, 42, suitColor, Math.PI);
-
-  // Subtle rank letter badges inside top-right & bottom-left of court plaque
-  drawRankText(ctx, RANK_LABELS[rank], boxW * 0.34, -boxH * 0.36, 42, palette, suitColor);
-  ctx.save();
-  ctx.translate(-boxW * 0.34, boxH * 0.36);
-  ctx.rotate(Math.PI);
-  drawRankText(ctx, RANK_LABELS[rank], 0, 0, 42, palette, suitColor);
-  ctx.restore();
 
   ctx.restore();
   ctx.restore();
