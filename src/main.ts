@@ -247,6 +247,8 @@ function initApp(): void {
     countedHintForCurrentPosition = false;
     activeHintToast = null;
     selectedCard = null;
+    scene.clearHint();
+    scene.showSelectionTargets(null);
 
     saveActiveGame(state);
     scene.syncState(state, sceneAction);

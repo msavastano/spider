@@ -671,6 +671,8 @@ export class SpiderScene implements SpiderSceneController {
   ): void {
     this.pendingDropSnap = false;
     this.dragState = null;
+    this.pressTarget = null;
+    this.pressActivePointerId = null;
     this.dragHoverPad.visible = false;
 
     const prevDeckCount = this.currentState?.config.decks;
@@ -689,13 +691,13 @@ export class SpiderScene implements SpiderSceneController {
     }
 
     this.currentState = state;
-    if (lastAction === 'deal-new' || lastAction === 'restore') {
-      this.clearHint();
-      this.showSelectionTargets(null);
-      this.winCelebration.stop();
-    } else if (lastAction && typeof lastAction === 'object') {
-      this.clearHint();
-      this.showSelectionTargets(null);
+    this.lastClickInfo = null;
+    this.clearHint();
+    this.showSelectionTargets(null);
+    if (lastAction === 'deal-new' || lastAction === 'restore' || lastAction === 'undo') {
+      if (!state.isWon) {
+        this.winCelebration.stop();
+      }
     }
 
     // Ensure card entities match cards in GameState
@@ -773,6 +775,10 @@ export class SpiderScene implements SpiderSceneController {
   clearHint(): void {
     this.activeHint = null;
     this.hintCurve = null;
+    this.hintElapsed = 0;
+    this.hintDestPos.set(0, 0, 0);
+    this.hintGhostGroup.position.set(0, 0, 0);
+    this.hintGhostGroup.rotation.set(0, 0, 0);
 
     for (const child of [...this.hintGhostGroup.children]) {
       this.hintGhostGroup.remove(child);
@@ -1930,6 +1936,7 @@ export class SpiderScene implements SpiderSceneController {
       { pos: THREE.Vector3; rotY: number; scale: number; faceUp: boolean; zone: CardLocation['zone'] }
     >,
   ): void {
+    this.flights.clear();
     let anyMoved = false;
     let idx = 0;
 
@@ -1939,7 +1946,7 @@ export class SpiderScene implements SpiderSceneController {
 
       const dist = prev.pos.distanceTo(ent.targetPos);
       const rotDiff = Math.abs(prev.rotY - ent.targetRot.y);
-      if (dist > 0.08 || rotDiff > 0.2) {
+      if (dist > 0.04 || rotDiff > 0.1) {
         anyMoved = true;
         this.flights.set(id, {
           cardId: id,
@@ -1954,7 +1961,7 @@ export class SpiderScene implements SpiderSceneController {
           endScale: ent.targetScale,
           peakZ: dist > 0.35 ? 0.65 : 0.36,
           bankRoll: 0.05,
-          flipDelayFrac: rotDiff > 0.2 ? 0.2 : 0,
+          flipDelayFrac: rotDiff > 0.1 ? 0.2 : 0,
           started: false,
           finished: false,
         });
@@ -2011,6 +2018,10 @@ export class SpiderScene implements SpiderSceneController {
 
     // hint.kind === 'move'
     const srcCol = this.currentState.columns[hint.fromCol] ?? [];
+    if (hint.fromIndex < 0 || hint.fromIndex >= srcCol.length) {
+      this.clearHint();
+      return;
+    }
     const { yPositions, faceUpStep } = this.getColumnCardOffsets(srcCol);
     const srcX = this.lastLayout.colCentersX[hint.fromCol] ?? 0;
     const srcY = yPositions[hint.fromIndex] ?? this.lastLayout.tableauTopY;
@@ -2074,6 +2085,7 @@ export class SpiderScene implements SpiderSceneController {
 
     // 3D Cubic Bezier flight arc
     const startPt = new THREE.Vector3(srcX, srcY, srcZ + 0.14);
+    this.hintGhostGroup.position.copy(startPt);
     const endPt = new THREE.Vector3(destPos.x, destPos.y, destPos.z + 0.18);
     const midX = (startPt.x + endPt.x) * 0.5;
     const midY = Math.max(startPt.y, endPt.y) + 0.55;
@@ -2457,6 +2469,7 @@ export class SpiderScene implements SpiderSceneController {
 
         this.clearHint();
         this.showSelectionTargets(null);
+        this.callbacks.onEmptySpaceClick();
 
         const dragZ = 0.85;
         this.dragPlane.constant = -dragZ;
