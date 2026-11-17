@@ -121,6 +121,7 @@ export class ModalManager {
   // Track saves snapshot signature to preserve save-name input text
   private lastSlotsSignature = '';
   private lastStatsSignature = '';
+  private previousFocusEl: HTMLElement | null = null;
 
   constructor(
     root: HTMLElement,
@@ -149,10 +150,17 @@ export class ModalManager {
         this.confirmResetStats = false;
         this.lastSlotsSignature = '';
       }
+      if (modalChanged && prevModal !== 'none') {
+        this.restoreFocusFromModal();
+      }
       return;
     }
 
     if (modalChanged) {
+      if (prevModal === 'none' && typeof document !== 'undefined') {
+        this.previousFocusEl =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      }
       this.confirmResetStats = false;
       if (nextModal === 'new-game') {
         this.draftDecks = hud.state.config.decks;
@@ -210,6 +218,10 @@ export class ModalManager {
           this.renderHelpModal();
         }
         break;
+    }
+
+    if (modalChanged) {
+      this.focusInitialModalElement(nextModal, hud);
     }
   }
 
@@ -332,6 +344,9 @@ export class ModalManager {
         this.confirmResetStats = true;
         if (hud) {
           this.renderStatsModal(hud);
+          this.root.querySelector<HTMLElement>('#btn-reset-stats-cancel')?.focus({
+            preventScroll: true,
+          });
         }
         return;
       }
@@ -340,6 +355,9 @@ export class ModalManager {
         this.confirmResetStats = false;
         if (hud) {
           this.renderStatsModal(hud);
+          this.root.querySelector<HTMLElement>('#btn-reset-stats')?.focus({
+            preventScroll: true,
+          });
         }
         return;
       }
@@ -348,8 +366,13 @@ export class ModalManager {
         const beforeHud = this.lastHud;
         this.confirmResetStats = false;
         this.actions.onResetStats();
-        if (this.currentModal === 'stats' && this.lastHud === beforeHud && beforeHud) {
-          this.renderStatsModal(beforeHud);
+        if (this.currentModal === 'stats') {
+          if (this.lastHud === beforeHud && beforeHud) {
+            this.renderStatsModal(beforeHud);
+          }
+          this.root.querySelector<HTMLElement>('#btn-stats-close')?.focus({
+            preventScroll: true,
+          });
         }
         return;
       }
@@ -491,6 +514,35 @@ export class ModalManager {
         }
       }
     });
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', (event) => {
+        if (this.currentModal === 'none' || !this.root.isConnected) {
+          return;
+        }
+        if (event.key !== 'Tab') {
+          return;
+        }
+
+        const focusables = this.getFocusableElements();
+        if (focusables.length === 0) {
+          return;
+        }
+
+        const active = document.activeElement as HTMLElement | null;
+        const activeIdx = active ? focusables.indexOf(active) : -1;
+
+        event.preventDefault();
+        if (event.shiftKey) {
+          const prevIdx = activeIdx <= 0 ? focusables.length - 1 : activeIdx - 1;
+          focusables[prevIdx]?.focus({ preventScroll: true });
+        } else {
+          const nextIdx =
+            activeIdx < 0 || activeIdx >= focusables.length - 1 ? 0 : activeIdx + 1;
+          focusables[nextIdx]?.focus({ preventScroll: true });
+        }
+      });
+    }
   }
 
   private renderNewGameModal(hud: HudSnapshot): void {
@@ -1382,25 +1434,34 @@ export class ModalManager {
             </div>
 
             <section class="help-section">
-              <h3>Smart Controls & Hints</h3>
+              <h3>Smart Controls &amp; Hints</h3>
               <p class="help-paragraph">
-                Click any movable card to highlight legal destinations, drag stacks directly across the felt,
-                or double-click a sequence to auto-move it to its highest-value target. Pressing <strong>Hint</strong>
-                ranks tactical plays—click repeatedly to cycle through alternatives (<code>Hint 1/N</code>).
+                Play by mouse, touch, or <strong>100% by keyboard</strong>. Use <strong>Arrow keys</strong>
+                or direct column keys <strong>1–0</strong> (plus <strong>Shift+1–6</strong> or <strong>- / =</strong>
+                on 3–4 deck tables) to step across columns and stacked runs, <strong>Space / Enter</strong> to pick up
+                or place cards, and <strong>Tab</strong> to cycle multiple targets. Pressing <strong>Hint (H)</strong>
+                animates top plays—press <strong>Enter</strong> to execute the shown hint immediately.
               </p>
             </section>
 
             <section class="help-section">
               <h3>Keyboard Shortcuts</h3>
               <div class="shortcuts-grid">
-                <div class="shortcut-item"><kbd>H</kbd><span>Cycle Tactical Hint</span></div>
+                <div class="shortcut-item"><kbd>← → ↑ ↓</kbd><span>Navigate Columns &amp; Stacks</span></div>
+                <div class="shortcut-item"><kbd>1–0</kbd><span>Column Jump / Target (⇧1–6 extra)</span></div>
+                <div class="shortcut-item"><kbd>Space / Enter</kbd><span>Select / Place Card</span></div>
+                <div class="shortcut-item"><kbd>Tab</kbd><span>Cycle Multiple Targets</span></div>
+                <div class="shortcut-item"><kbd>H · Enter</kbd><span>Cycle Hint · Play Active Hint</span></div>
+                <div class="shortcut-item"><kbd>A</kbd><span>Auto-Complete Suit Run</span></div>
                 <div class="shortcut-item"><kbd>Z</kbd><span>Undo Last Move</span></div>
                 <div class="shortcut-item"><kbd>D</kbd><span>Deal Stock Wave</span></div>
                 <div class="shortcut-item"><kbd>N</kbd><span>New Deal Menu</span></div>
+                <div class="shortcut-item"><kbd>B</kbd><span>Saved Hands</span></div>
+                <div class="shortcut-item"><kbd>S</kbd><span>Stats &amp; Win Streak</span></div>
                 <div class="shortcut-item"><kbd>C</kbd><span>Customize Table</span></div>
-                <div class="shortcut-item"><kbd>S</kbd><span>Stats & Win Streak</span></div>
-                <div class="shortcut-item"><kbd>Esc</kbd><span>Clear Selection / Close</span></div>
-                <div class="shortcut-item"><kbd>?</kbd><span>Rules & Shortcuts</span></div>
+                <div class="shortcut-item"><kbd>M</kbd><span>Mute / Unmute Audio</span></div>
+                <div class="shortcut-item"><kbd>Esc</kbd><span>Cancel Selection / Close</span></div>
+                <div class="shortcut-item"><kbd>?</kbd><span>Rules &amp; Shortcuts</span></div>
               </div>
             </section>
           </div>
@@ -1413,6 +1474,68 @@ export class ModalManager {
         </div>
       </div>
     `;
+  }
+
+  private getFocusableElements(): HTMLElement[] {
+    const candidates = Array.from(
+      this.root.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+    return candidates.filter(
+      (el) => !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true',
+    );
+  }
+
+  private focusInitialModalElement(modal: ModalKind, hud: HudSnapshot): void {
+    let selector = '';
+    switch (modal) {
+      case 'new-game':
+        selector = `#btn-decks-${this.draftDecks}`;
+        break;
+      case 'customize':
+        selector = `#swatch-felt-${hud.settings.feltTheme}`;
+        break;
+      case 'stats':
+        selector = '#btn-stats-close';
+        break;
+      case 'saves':
+        selector = '#input-save-name';
+        break;
+      case 'abandon-confirm':
+        selector = '#btn-abandon-cancel';
+        break;
+      case 'victory':
+        selector = '#btn-victory-next-hand';
+        break;
+      case 'help':
+        selector = '#btn-help-close';
+        break;
+    }
+
+    const target =
+      (selector ? this.root.querySelector<HTMLElement>(selector) : null) ??
+      this.getFocusableElements()[0] ??
+      null;
+    target?.focus({ preventScroll: true });
+  }
+
+  private restoreFocusFromModal(): void {
+    const prev = this.previousFocusEl;
+    this.previousFocusEl = null;
+
+    if (typeof document !== 'undefined') {
+      const stage = document.getElementById('stage-container');
+      if (stage && prev?.closest('#hud-root')) {
+        stage.focus({ preventScroll: true });
+        return;
+      }
+      if (prev && prev.isConnected) {
+        prev.focus({ preventScroll: true });
+        return;
+      }
+      stage?.focus({ preventScroll: true });
+    }
   }
 
   private parseDraftSeed(): number | undefined {

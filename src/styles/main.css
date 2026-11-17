@@ -106,6 +106,10 @@ input:focus-visible {
   background: radial-gradient(circle at 50% 42%, #132a1f 0%, #08120e 78%, #050a07 100%);
 }
 
+.stage-container:focus {
+  outline: none;
+}
+
 /* ==========================================================================
    Floating Luxury Cardroom HUD
    ========================================================================== */
@@ -1654,6 +1658,15 @@ input:focus-visible {
    Help & Shortcuts Modal
    ========================================================================== */
 
+#modal-help.modal-panel--wide {
+  max-width: 880px;
+}
+
+.help-body {
+  gap: 14px;
+  padding: 16px 22px;
+}
+
 .help-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1673,7 +1686,7 @@ input:focus-visible {
   padding-left: 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   font-size: 12.5px;
   color: var(--ivory-200);
 }
@@ -1695,19 +1708,19 @@ input:focus-visible {
 
 .shortcuts-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .shortcut-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
+  gap: 8px;
+  padding: 6px 9px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-hairline);
   background: rgba(246, 241, 231, 0.025);
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--ivory-200);
 }
 
@@ -1715,16 +1728,18 @@ input:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 24px;
+  min-width: 26px;
+  height: 23px;
   padding: 0 6px;
   border-radius: 5px;
   border: 1px solid rgba(212, 175, 106, 0.34);
   background: rgba(10, 14, 12, 0.8);
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--brass-300);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ==========================================================================
@@ -1758,6 +1773,10 @@ input:focus-visible {
 
   .hud-streak-label {
     display: none;
+  }
+
+  .shortcuts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

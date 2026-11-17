@@ -324,3 +324,40 @@ export function createStockCounterTexture(
   tex.needsUpdate = true;
   return tex;
 }
+
+export function createColumnKeyBadgeTexture(
+  label: string,
+  maxAnisotropy = 4,
+): THREE.CanvasTexture {
+  const W = 128;
+  const H = 80;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.clearRect(0, 0, W, H);
+
+  roundedPath(ctx, 8, 8, W - 16, H - 16, 22);
+  ctx.fillStyle = 'rgba(11, 17, 14, 0.9)';
+  ctx.fill();
+
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(235, 208, 148, 0.72)';
+  ctx.stroke();
+
+  ctx.fillStyle = '#F6F1E7';
+  ctx.font =
+    label.length > 1
+      ? '800 32px "JetBrains Mono", "Inter", system-ui, monospace'
+      : '800 38px "JetBrains Mono", "Inter", system-ui, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, W * 0.5, H * 0.53);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.max(1, maxAnisotropy);
+  tex.needsUpdate = true;
+  return tex;
+}

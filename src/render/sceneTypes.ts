@@ -13,6 +13,7 @@ export interface SceneCallbacks {
   onDestinationClick: (toCol: number) => void;
   onEmptySpaceClick: () => void;
   onStockClick: () => void;
+  onPointerInteract?: () => void;
   onAnimationEvent?: (event: SceneSoundEvent) => void;
 }
 
@@ -29,6 +30,12 @@ export interface SelectionHighlight {
   fromCol: number;
   fromIndex: number;
   destinations: TargetDestination[];
+  focusedDestCol?: number | null;
+}
+
+export interface KeyboardCursorTarget {
+  col: number;
+  index: number | null;
 }
 
 export interface SpiderSceneController {
@@ -39,6 +46,8 @@ export interface SpiderSceneController {
   showHint(hint: HintMove, hintIndex: number, totalHints: number): void;
   clearHint(): void;
   showSelectionTargets(selection: SelectionHighlight | null): void;
+  setKeyboardCursor(target: KeyboardCursorTarget | null): void;
+  setFocusedDestinationCol(toCol: number | null): void;
   pulseLockedCard(col: number, index: number): void;
   startWinCelebration(state: GameState): void;
   stopWinCelebration(): void;

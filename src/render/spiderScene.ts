@@ -11,6 +11,7 @@ import {
   type UserSettings,
 } from '../engine/types';
 import type {
+  KeyboardCursorTarget,
   SceneCallbacks,
   SceneSoundEvent,
   SelectionHighlight,
@@ -24,6 +25,7 @@ import {
 } from './themes';
 import { CardTextureManager } from './cardTextures';
 import {
+  createColumnKeyBadgeTexture,
   createSlotDecalTexture,
   createStockCounterTexture,
   createTableTextures,
@@ -240,6 +242,7 @@ export class SpiderScene implements SpiderSceneController {
     CARD_CORNER_RADIUS,
   );
   private hitPlaneGeo = new THREE.PlaneGeometry(CARD_WIDTH * 1.08, CARD_HEIGHT * 1.08);
+  private colBadgeGeo = new THREE.PlaneGeometry(1, 1);
   private sparkleTexture = createSparkleTexture();
 
   private sharedBackMat!: THREE.MeshStandardMaterial;
@@ -277,8 +280,20 @@ export class SpiderScene implements SpiderSceneController {
   private selectionRunOutline: THREE.Mesh;
   private selectionRunOutlineMat: THREE.MeshBasicMaterial;
   private activeSelection: SelectionHighlight | null = null;
+  private focusedDestCol: number | null = null;
   private selectionVisuals: SelectionTargetVisual[] = [];
   private selectionElapsed = 0;
+
+  // Keyboard tableau cursor & column key badges
+  private cursorGroup = new THREE.Group();
+  private cursorOutline!: THREE.Mesh;
+  private cursorFill!: THREE.Mesh;
+  private cursorOutlineMat!: THREE.MeshBasicMaterial;
+  private cursorFillMat!: THREE.MeshBasicMaterial;
+  private keyboardCursor: KeyboardCursorTarget | null = null;
+  private colBadgesGroup = new THREE.Group();
+  private colBadgeMeshes: THREE.Mesh[] = [];
+  private colBadgeTextures: THREE.CanvasTexture[] = [];
 
   // Hint ghost & Bezier path
   private hintGroup = new THREE.Group();
@@ -424,6 +439,29 @@ export class SpiderScene implements SpiderSceneController {
     this.selectionRunOutline.visible = false;
     this.selectionGroup.add(this.selectionRunOutline);
     this.scene.add(this.selectionGroup);
+
+    // Keyboard cursor reticle & column shortcut badges
+    this.cursorOutlineMat = new THREE.MeshBasicMaterial({
+      color: 0xfef3c7,
+      transparent: true,
+      opacity: 0.92,
+      depthWrite: false,
+    });
+    this.cursorFillMat = new THREE.MeshBasicMaterial({
+      color: 0xfde68a,
+      transparent: true,
+      opacity: 0.1,
+      depthWrite: false,
+    });
+    this.cursorOutline = new THREE.Mesh(this.padOutlineGeo, this.cursorOutlineMat);
+    this.cursorFill = new THREE.Mesh(this.padPlaneGeo, this.cursorFillMat);
+    this.cursorFill.position.z = -0.002;
+    this.cursorGroup.add(this.cursorOutline, this.cursorFill);
+    this.cursorGroup.visible = false;
+    this.scene.add(this.cursorGroup);
+
+    this.colBadgesGroup.visible = false;
+    this.scene.add(this.colBadgesGroup);
 
     // Hint group
     this.hintGroup.add(this.hintGhostGroup);
@@ -575,12 +613,15 @@ export class SpiderScene implements SpiderSceneController {
     this.tableMesh.geometry.dispose();
 
     this.clearSlotMeshes();
+    this.clearColumnKeyBadges();
     this.stockCounterTex?.dispose();
     this.stockCounterTex = null;
 
     this.dragHoverOutlineMat.dispose();
     this.dragHoverFillMat.dispose();
     this.selectionRunOutlineMat.dispose();
+    this.cursorOutlineMat.dispose();
+    this.cursorFillMat.dispose();
 
     for (const sp of this.sparklePool) {
       sp.mat.dispose();
@@ -591,6 +632,7 @@ export class SpiderScene implements SpiderSceneController {
     this.padOutlineGeo.dispose();
     this.padPlaneGeo.dispose();
     this.hitPlaneGeo.dispose();
+    this.colBadgeGeo.dispose();
     this.sparkleTexture.dispose();
 
     if (this.renderer) {
@@ -659,6 +701,7 @@ export class SpiderScene implements SpiderSceneController {
       if (this.activeHint) {
         this.rebuildHintVisuals();
       }
+      this.rebuildCursorVisuals();
     } else if (prev.dimLockedCards !== this.settings.dimLockedCards) {
       this.recomputeLockedStates();
     }
@@ -740,6 +783,7 @@ export class SpiderScene implements SpiderSceneController {
     // Update target positions, scales, rotations, locked state
     const snapImmediate = lastAction === 'restore' || lastAction === undefined;
     this.recomputeTargetsFromCurrentState(snapImmediate);
+    this.rebuildCursorVisuals();
 
     // Trigger expressive animations based on lastAction
     if (lastAction === 'deal-new') {
@@ -822,6 +866,7 @@ export class SpiderScene implements SpiderSceneController {
         this.activeSelection.fromIndex !== selection.fromIndex);
 
     this.activeSelection = selection;
+    this.focusedDestCol = selection?.focusedDestCol ?? null;
     this.selectionElapsed = 0;
 
     for (const ent of this.cardEntities.values()) {
@@ -842,6 +887,16 @@ export class SpiderScene implements SpiderSceneController {
     }
 
     this.rebuildSelectionVisuals();
+    this.rebuildCursorVisuals();
+  }
+
+  setKeyboardCursor(target: KeyboardCursorTarget | null): void {
+    this.keyboardCursor = target ? { col: target.col, index: target.index } : null;
+    this.rebuildCursorVisuals();
+  }
+
+  setFocusedDestinationCol(toCol: number | null): void {
+    this.focusedDestCol = toCol;
   }
 
   pulseLockedCard(col: number, index: number): void {
@@ -921,6 +976,7 @@ export class SpiderScene implements SpiderSceneController {
     if (this.activeHint) {
       this.rebuildHintVisuals();
     }
+    this.rebuildCursorVisuals();
     this.winCelebration.updateBounds({
       minX: this.lastLayout.boardMinX,
       maxX: this.lastLayout.boardMaxX,
@@ -1274,6 +1330,102 @@ export class SpiderScene implements SpiderSceneController {
     this.slotGroup.add(badgeMesh);
     this.stockCounterMesh = badgeMesh;
     this.updateStockCounterBadge();
+    this.rebuildColumnKeyBadges();
+  }
+
+  private clearColumnKeyBadges(): void {
+    for (const child of [...this.colBadgesGroup.children]) {
+      this.colBadgesGroup.remove(child);
+      if (child instanceof THREE.Mesh) {
+        (child.material as THREE.Material).dispose();
+      }
+    }
+    for (const tex of this.colBadgeTextures) {
+      tex.dispose();
+    }
+    this.colBadgeMeshes = [];
+    this.colBadgeTextures = [];
+  }
+
+  private getColumnShortcutLabel(col: number): string {
+    if (col < 9) return String(col + 1);
+    if (col === 9) return '0';
+    return `⇧${col - 9}`;
+  }
+
+  private rebuildColumnKeyBadges(): void {
+    this.clearColumnKeyBadges();
+    const maxAniso = this.renderer?.capabilities.getMaxAnisotropy() ?? 4;
+    const numCols = this.lastLayout.numCols;
+    const badgeW = numCols >= 16 ? 0.38 : 0.44;
+    const badgeH = numCols >= 16 ? 0.24 : 0.275;
+    const badgeY = this.lastLayout.tableauTopY + CARD_HEIGHT * 0.5 + 0.2;
+
+    for (let c = 0; c < numCols; c++) {
+      const tex = createColumnKeyBadgeTexture(
+        this.getColumnShortcutLabel(c),
+        maxAniso,
+      );
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.72,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(this.colBadgeGeo, mat);
+      mesh.scale.set(badgeW, badgeH, 1);
+      mesh.userData = { baseW: badgeW, baseH: badgeH };
+      mesh.position.set(this.lastLayout.colCentersX[c] ?? 0, badgeY, 0.06);
+      this.colBadgesGroup.add(mesh);
+      this.colBadgeMeshes.push(mesh);
+      this.colBadgeTextures.push(tex);
+    }
+
+    this.colBadgesGroup.visible = this.keyboardCursor !== null;
+  }
+
+  private rebuildCursorVisuals(): void {
+    const cursor = this.keyboardCursor;
+    if (!cursor || !this.currentState) {
+      this.cursorGroup.visible = false;
+      this.colBadgesGroup.visible = false;
+      return;
+    }
+
+    this.colBadgesGroup.visible = true;
+
+    // When a source run is already selected at this exact cursor slot, avoid double-drawing over selectionRunOutline
+    if (
+      this.activeSelection &&
+      this.activeSelection.fromCol === cursor.col &&
+      this.activeSelection.fromIndex === cursor.index
+    ) {
+      this.cursorGroup.visible = false;
+      return;
+    }
+
+    const colCards = this.currentState.columns[cursor.col] ?? [];
+    const x = this.lastLayout.colCentersX[cursor.col] ?? 0;
+
+    if (colCards.length === 0 || cursor.index === null || cursor.index < 0 || cursor.index >= colCards.length) {
+      this.cursorGroup.visible = true;
+      this.cursorOutline.scale.set(1.04, 1.04, 1);
+      this.cursorFill.scale.set(1, 1, 1);
+      this.cursorGroup.position.set(x, this.lastLayout.tableauTopY, BASE_CARD_Z + 0.05);
+      return;
+    }
+
+    const { yPositions, faceUpStep } = this.getColumnCardOffsets(colCards);
+    const topY = yPositions[cursor.index] ?? this.lastLayout.tableauTopY;
+    const runLen = colCards.length - cursor.index;
+    const runH = CARD_HEIGHT + (runLen - 1) * faceUpStep;
+    const centerY = topY - ((runLen - 1) * faceUpStep) * 0.5;
+    const z = BASE_CARD_Z + (colCards.length - 1) * CARD_Z_STEP + 0.09;
+
+    this.cursorGroup.visible = true;
+    this.cursorOutline.scale.set(1.05, runH / CARD_HEIGHT, 1);
+    this.cursorFill.scale.set(1, runH / CARD_HEIGHT, 1);
+    this.cursorGroup.position.set(x, centerY, z);
   }
 
   private updateStockCounterBadge(): void {
@@ -2380,6 +2532,7 @@ export class SpiderScene implements SpiderSceneController {
     if (e.button !== 0 || !this.currentState) return;
     if (this.winCelebration.isRunning()) return;
 
+    this.callbacks.onPointerInteract?.();
     this.pressActivePointerId = e.pointerId;
     this.pressStartClient.set(e.clientX, e.clientY);
     this.pressTarget = this.hitTestPressTarget(e.clientX, e.clientY);
@@ -2916,13 +3069,28 @@ export class SpiderScene implements SpiderSceneController {
       this.selectionRunOutlineMat.opacity = 0.72 + 0.25 * Math.sin(this.clockElapsed * 6);
 
       for (const vis of this.selectionVisuals) {
+        const hasKeyboardFocus = this.focusedDestCol !== null;
+        const isFocusedTarget = hasKeyboardFocus && vis.toCol === this.focusedDestCol;
         const pulse = 0.5 + 0.5 * Math.sin(this.clockElapsed * 5.2 + vis.phaseOffset * Math.PI * 2);
-        vis.outlineMat.opacity = 0.64 + 0.32 * pulse;
-        vis.fillMat.opacity = 0.12 + 0.16 * pulse;
-        const padScale = 1 + 0.038 * pulse;
-        vis.padGroup.scale.set(padScale, padScale, 1);
 
-        vis.arcMat.opacity = 0.28 + 0.26 * pulse;
+        if (isFocusedTarget) {
+          vis.outlineMat.opacity = 0.94 + 0.06 * pulse;
+          vis.fillMat.opacity = 0.28 + 0.14 * pulse;
+          const padScale = 1.05 + 0.045 * pulse;
+          vis.padGroup.scale.set(padScale, padScale, 1);
+          vis.arcMat.opacity = 0.68 + 0.24 * pulse;
+        } else if (hasKeyboardFocus) {
+          vis.outlineMat.opacity = 0.32 + 0.1 * pulse;
+          vis.fillMat.opacity = 0.05 + 0.04 * pulse;
+          vis.padGroup.scale.set(0.97, 0.97, 1);
+          vis.arcMat.opacity = 0.14 + 0.08 * pulse;
+        } else {
+          vis.outlineMat.opacity = 0.64 + 0.32 * pulse;
+          vis.fillMat.opacity = 0.12 + 0.16 * pulse;
+          const padScale = 1 + 0.038 * pulse;
+          vis.padGroup.scale.set(padScale, padScale, 1);
+          vis.arcMat.opacity = 0.28 + 0.26 * pulse;
+        }
 
         // Animated translucent ghost flying repeatedly along each destination curve
         const t = (this.selectionElapsed * 0.85 + vis.phaseOffset) % 1;
@@ -2930,10 +3098,47 @@ export class SpiderScene implements SpiderSceneController {
         const pt = vis.curve.getPoint(eased);
         vis.ghostMesh.position.copy(pt);
 
-        let gOp = 0.62;
-        if (t < 0.15) gOp = (t / 0.15) * 0.62;
-        else if (t > 0.82) gOp = ((1 - t) / 0.18) * 0.62;
+        const maxGhostOp = isFocusedTarget ? 0.85 : hasKeyboardFocus ? 0.22 : 0.62;
+        let gOp = maxGhostOp;
+        if (t < 0.15) gOp = (t / 0.15) * maxGhostOp;
+        else if (t > 0.82) gOp = ((1 - t) / 0.18) * maxGhostOp;
         vis.ghostMat.opacity = gOp;
+      }
+    }
+
+    // 6b. Pulse keyboard cursor reticle & column key badges when active
+    if (this.keyboardCursor !== null) {
+      const kPulse = 0.5 + 0.5 * Math.sin(this.clockElapsed * 5.2);
+      this.cursorOutlineMat.opacity = 0.78 + 0.22 * kPulse;
+      this.cursorFillMat.opacity = 0.08 + 0.06 * kPulse;
+
+      for (let c = 0; c < this.colBadgeMeshes.length; c++) {
+        const mesh = this.colBadgeMeshes[c];
+        const mat = mesh.material as THREE.MeshBasicMaterial;
+        const baseW = (mesh.userData.baseW as number | undefined) ?? 0.44;
+        const baseH = (mesh.userData.baseH as number | undefined) ?? 0.275;
+        const isCursorCol = c === this.keyboardCursor.col;
+        const isDestFocus = this.focusedDestCol !== null && c === this.focusedDestCol;
+        const isDestCandidate =
+          this.activeSelection?.destinations.some((d) => d.toCol === c) ?? false;
+
+        if (isDestFocus) {
+          mat.color.setHex(0x7dd3fc);
+          mat.opacity = 1;
+          mesh.scale.set(baseW * 1.14, baseH * 1.14, 1);
+        } else if (isCursorCol) {
+          mat.color.setHex(0xfef08a);
+          mat.opacity = 1;
+          mesh.scale.set(baseW * 1.12, baseH * 1.12, 1);
+        } else if (isDestCandidate) {
+          mat.color.setHex(0xbae6fd);
+          mat.opacity = 0.92;
+          mesh.scale.set(baseW * 1.03, baseH * 1.03, 1);
+        } else {
+          mat.color.setHex(0xe2e8f0);
+          mat.opacity = 0.65;
+          mesh.scale.set(baseW * 0.95, baseH * 0.95, 1);
+        }
       }
     }
 

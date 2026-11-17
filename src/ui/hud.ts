@@ -163,7 +163,9 @@ export class HudView {
     this.soundIconEl.innerHTML = settings.soundEnabled ? ICONS.soundOn : ICONS.soundOff;
     this.soundBtn.setAttribute('aria-pressed', String(settings.soundEnabled));
     this.soundBtn.classList.toggle('is-muted', !settings.soundEnabled);
-    this.soundBtn.title = settings.soundEnabled ? 'Mute Sound' : 'Unmute Sound';
+    this.soundBtn.title = settings.soundEnabled
+      ? 'Mute Sound (M)'
+      : 'Unmute Sound (M)';
 
     // Toast sync without clobbering timed showToast calls
     if (toastMessage !== null && toastMessage.trim().length > 0) {
@@ -273,7 +275,7 @@ export class HudView {
               id="btn-auto-complete"
               class="hud-btn hud-btn--brass"
               hidden
-              title="Automatically finish remaining suits"
+              title="Automatically finish remaining suits (A)"
             >
               <span class="hud-btn-icon">${ICONS.sparkles}</span>
               <span class="hud-btn-text">Auto-Complete</span>
@@ -284,7 +286,7 @@ export class HudView {
                 type="button"
                 id="btn-hint"
                 class="hud-btn"
-                title="Show tactical hint (H)"
+                title="Show tactical hint (H · Enter plays hint)"
               >
                 <span class="hud-btn-icon">${ICONS.hint}</span>
                 <span id="hud-hint-label" class="hud-btn-text">Hint</span>
@@ -340,7 +342,7 @@ export class HudView {
               type="button"
               id="btn-saves"
               class="hud-btn hud-btn--icon"
-              title="Saved Games"
+              title="Saved Games (B)"
               aria-label="Saved Games"
             >
               <span class="hud-btn-icon">${ICONS.saves}</span>
@@ -370,7 +372,7 @@ export class HudView {
               type="button"
               id="btn-sound"
               class="hud-btn hud-btn--icon"
-              title="Toggle Sound"
+              title="Toggle Sound (M)"
               aria-label="Toggle Sound"
               aria-pressed="true"
             >
@@ -436,22 +438,43 @@ export class HudView {
     this.customizeBtn.addEventListener('click', () => this.requestModal('customize'));
     this.helpBtn.addEventListener('click', () => this.requestModal('help'));
 
-    this.autoCompleteBtn.addEventListener('click', () => this.actions.onAutoComplete());
-    this.hintBtn.addEventListener('click', () => this.actions.onHint());
-    this.hintClearBtn.addEventListener('click', () => {
+    this.autoCompleteBtn.addEventListener('click', (event) => {
+      this.returnFocusToTableIfPointer(event);
+      this.actions.onAutoComplete();
+    });
+    this.hintBtn.addEventListener('click', (event) => {
+      this.returnFocusToTableIfPointer(event);
+      this.actions.onHint();
+    });
+    this.hintClearBtn.addEventListener('click', (event) => {
+      this.returnFocusToTableIfPointer(event);
       this.lastRenderToast = null;
       this.timedToastActive = false;
       this.clearToastTimer();
       this.hideToastElement();
       this.dispatchCustomEvent('spider:clear-hint');
     });
-    this.undoBtn.addEventListener('click', () => this.actions.onUndo());
-    this.dealStockBtn.addEventListener('click', () => this.actions.onDealStock());
+    this.undoBtn.addEventListener('click', (event) => {
+      this.returnFocusToTableIfPointer(event);
+      this.actions.onUndo();
+    });
+    this.dealStockBtn.addEventListener('click', (event) => {
+      this.returnFocusToTableIfPointer(event);
+      this.actions.onDealStock();
+    });
 
-    this.soundBtn.addEventListener('click', () => {
+    this.soundBtn.addEventListener('click', (event) => {
+      this.returnFocusToTableIfPointer(event);
       const enabled = this.lastSnapshot ? this.lastSnapshot.settings.soundEnabled : true;
       this.actions.onUpdateSettings({ soundEnabled: !enabled });
     });
+  }
+
+  private returnFocusToTableIfPointer(event: Event): void {
+    if (typeof document === 'undefined') return;
+    if (event instanceof MouseEvent && event.detail > 0) {
+      document.getElementById('stage-container')?.focus({ preventScroll: true });
+    }
   }
 
   private requestModal(modal: ModalKind): void {
